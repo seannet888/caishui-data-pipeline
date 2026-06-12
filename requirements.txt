@@ -1,0 +1,20 @@
+# data-pipeline 精确版本依赖（架构 v2.1 第一章锁定）
+fastapi==0.111.1
+uvicorn[standard]==0.30.1
+pydantic==2.8.2
+pydantic-settings==2.3.4
+python-multipart==0.0.9
+# OpenAI SDK：配置 base_url 调用 DeepSeek Chat + Embeddings
+openai==1.35.13
+# OpenAI 1.35.x passes the legacy `proxies` argument; httpx 0.28 removed it.
+httpx==0.27.2
+# 解析
+pymupdf4llm==0.0.17
+pandas==2.2.2
+openpyxl==3.1.5
+# 数据库（与 Prisma 共享同一 PG 实例；只读写 ingest_tasks 与写库，不做迁移）
+sqlalchemy[asyncio]==2.0.31
+asyncpg==0.29.0
+# 测试
+pytest==8.2.2
+pytest-asyncio==0.23.7
