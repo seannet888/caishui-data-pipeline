@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from api.routers import ingest, preview, status
+from api.routers import embedding, ingest, preview, status
 from config.settings import get_settings
 from db.connection import engine
 from db.recovery import reclaim_orphaned_tasks
@@ -29,6 +29,7 @@ app = FastAPI(title="caishui-data-pipeline", version="0.1.0", lifespan=lifespan)
 app.include_router(ingest.router, tags=["ingest"])
 app.include_router(status.router, tags=["status"])
 app.include_router(preview.router, tags=["preview"])
+app.include_router(embedding.router, tags=["embedding"])
 
 
 @app.get("/health")

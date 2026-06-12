@@ -5,7 +5,7 @@ from __future__ import annotations
 from functools import lru_cache
 
 from db.connection import SessionLocal
-from db.ingestion_adapter import get_ingest_task
+from db.ingestion_adapter import PostgresIngestionAdapter, get_ingest_task
 from transformers.embedder import Embedder
 
 
@@ -21,3 +21,12 @@ class IngestTaskRepository:
 
 def get_ingest_task_repository() -> IngestTaskRepository:
     return IngestTaskRepository()
+
+
+def get_embedding_job_repository() -> PostgresIngestionAdapter:
+    return PostgresIngestionAdapter(
+        session_factory=SessionLocal,
+        task_id="manual-embedding",
+        document_id="manual-embedding",
+        actor_id="system",
+    )

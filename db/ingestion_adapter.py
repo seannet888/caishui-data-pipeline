@@ -36,6 +36,37 @@ def _enum(value: str | None) -> str | None:
     return value.upper() if value else None
 
 
+def _chunk_from_row(row) -> IngestionChunk:
+    chunk = IngestionChunk(
+        pipeline_chunk_id=row["pipeline_chunk_id"],
+        document_id=row["document_id"],
+        chunk_index=row["chunk_index"],
+        chunk_type=row["chunk_type"],
+        content=row["content"],
+        content_hash=row["content_hash"],
+        metadata=dict(row["metadata"]),
+        row_id=row["id"],
+        verification_status=row["verification_status"],
+        verification_method=row["verification_method"],
+        verified_by=row["verified_by"],
+        verified_at=row["verified_at"],
+        verification_notes=row["verification_notes"],
+        embedding=_parse_vector(row["embedding"]),
+        embedding_status=row["embedding_status"],
+        embedding_error=row["embedding_error"],
+        embedding_identity=row["embedding_identity"],
+        embedding_model=row["embedding_model"],
+        embedding_dimension=row["embedding_dimension"],
+        embedding_attempts=row["embedding_attempts"],
+        embedding_last_attempt_at=row["embedding_last_attempt_at"],
+    )
+    if "retrieval_status" in row:
+        chunk.retrieval_status = row["retrieval_status"]
+    if "is_current_version" in row:
+        chunk.is_current_version = row["is_current_version"]
+    return chunk
+
+
 @dataclass
 class PostgresIngestionAdapter:
     session_factory: async_sessionmaker[AsyncSession]
@@ -43,6 +74,31 @@ class PostgresIngestionAdapter:
     document_id: str
     source_file_path: str | None = None
     actor_id: str = "system"
+
+    async def get_chunk_by_id(self, chunk_id: str) -> IngestionChunk | None:
+        async with self.session_factory() as session:
+            row = (
+                await session.execute(
+                    text(
+                        """
+                        SELECT id, pipeline_chunk_id, document_id, chunk_index,
+                               chunk_type, content, content_hash, metadata,
+                               verification_status, verification_method,
+                               verified_by, verified_at, verification_notes,
+                               embedding::text AS embedding, embedding_status,
+                               embedding_error, embedding_identity,
+                               embedding_model, embedding_dimension,
+                               embedding_attempts, embedding_last_attempt_at,
+                               retrieval_status, is_current_version
+                        FROM knowledge_chunks
+                        WHERE id = :chunk_id
+                        LIMIT 1
+                        """
+                    ),
+                    {"chunk_id": chunk_id},
+                )
+            ).mappings().first()
+        return _chunk_from_row(row) if row else None
 
     async def get_current_chunk(
         self, document_id: str, pipeline_chunk_id: str
@@ -74,31 +130,7 @@ class PostgresIngestionAdapter:
                     },
                 )
             ).mappings().first()
-        if not row:
-            return None
-        return IngestionChunk(
-            pipeline_chunk_id=row["pipeline_chunk_id"],
-            document_id=row["document_id"],
-            chunk_index=row["chunk_index"],
-            chunk_type=row["chunk_type"],
-            content=row["content"],
-            content_hash=row["content_hash"],
-            metadata=dict(row["metadata"]),
-            row_id=row["id"],
-            verification_status=row["verification_status"],
-            verification_method=row["verification_method"],
-            verified_by=row["verified_by"],
-            verified_at=row["verified_at"],
-            verification_notes=row["verification_notes"],
-            embedding=_parse_vector(row["embedding"]),
-            embedding_status=row["embedding_status"],
-            embedding_error=row["embedding_error"],
-            embedding_identity=row["embedding_identity"],
-            embedding_model=row["embedding_model"],
-            embedding_dimension=row["embedding_dimension"],
-            embedding_attempts=row["embedding_attempts"],
-            embedding_last_attempt_at=row["embedding_last_attempt_at"],
-        )
+        return _chunk_from_row(row) if row else None
 
     async def save_chunk(self, chunk: IngestionChunk) -> None:
         async with self.session_factory() as session, session.begin():
