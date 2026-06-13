@@ -36,6 +36,14 @@ def _enum(value: str | None) -> str | None:
     return value.upper() if value else None
 
 
+def _naive_utc(value: datetime | None) -> datetime | None:
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        return value
+    return value.astimezone(UTC).replace(tzinfo=None)
+
+
 def _chunk_from_row(row) -> IngestionChunk:
     chunk = IngestionChunk(
         pipeline_chunk_id=row["pipeline_chunk_id"],
@@ -254,7 +262,7 @@ class PostgresIngestionAdapter:
         )
 
     def _params(self, chunk: IngestionChunk) -> dict:
-        now = datetime.now(UTC)
+        now = _naive_utc(datetime.now(UTC))
         metadata = chunk.metadata
         return {
             "id": chunk.row_id,
@@ -271,7 +279,7 @@ class PostgresIngestionAdapter:
             "embedding_model": chunk.embedding_model,
             "embedding_dimension": chunk.embedding_dimension,
             "embedding_attempts": chunk.embedding_attempts,
-            "embedding_last_attempt_at": chunk.embedding_last_attempt_at,
+            "embedding_last_attempt_at": _naive_utc(chunk.embedding_last_attempt_at),
             "publish_date": metadata.get("publish_date"),
             "effective_date": metadata.get("effective_date"),
             "expire_date": metadata.get("expire_date"),
@@ -282,7 +290,7 @@ class PostgresIngestionAdapter:
             "verification_status": chunk.verification_status,
             "verification_method": chunk.verification_method,
             "verified_by": chunk.verified_by,
-            "verified_at": chunk.verified_at,
+            "verified_at": _naive_utc(chunk.verified_at),
             "verification_notes": chunk.verification_notes,
             "metadata": json.dumps(metadata, default=str, ensure_ascii=False),
             "created_at": now,

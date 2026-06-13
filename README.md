@@ -90,11 +90,45 @@ $env:PYTHONUTF8="1"
 .\.venv\Scripts\python -m pytest
 ```
 
-Expected baseline as of 2026-06-12:
+Expected baseline as of 2026-06-13:
 
 ```text
-33 passed, 1 skipped
+all tests pass; PDF loader test may skip when optional fixture prerequisites are unavailable
 ```
+
+## Final Local Acceptance
+
+Run these checks from `data-pipeline/` with the project virtual environment. Do not use global Anaconda, system `python`, or bare `pytest`.
+
+Print the current acceptance runbook:
+
+```powershell
+.\.venv\Scripts\python -m acceptance_runbook
+```
+
+```powershell
+$env:PYTHONUTF8="1"
+.\.venv\Scripts\python -m pip install -r requirements.txt
+.\.venv\Scripts\python -m pytest
+$env:DATABASE_URL="postgresql+asyncpg://caishui:localdev_password@127.0.0.1:55432/caishui_db"
+$env:PIPELINE_SHARED_SECRET="local-smoke-secret"
+.\.venv\Scripts\python -m uvicorn api.main:app --host 127.0.0.1 --port 8000
+```
+
+Then verify:
+
+```text
+GET http://127.0.0.1:8000/health
+```
+
+Acceptance notes:
+
+- Use .\.venv\Scripts\python, not global Anaconda/python/pytest.
+- Pipeline does not own migrations; do not run Alembic or SQLAlchemy create_all.
+- PYTHONUTF8=1 is required on Windows to avoid GBK/UTF-8 drift.
+- `DATABASE_URL` must use the async SQLAlchemy form, for example `postgresql+asyncpg://...`.
+- WebApp live handshakes require the same `PIPELINE_SHARED_SECRET` value.
+- The acceptance runbook projection lives in `acceptance_runbook.py` and is covered by `tests/test_acceptance_runbook.py`.
 
 ## API
 
