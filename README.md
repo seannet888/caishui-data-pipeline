@@ -4,6 +4,16 @@
 
 当前仓库是 `caishui-webapp` 的配套 Pipeline Service，但代码边界独立：WebApp 负责 Prisma schema、数据库迁移、检索、问答和引用审计；Pipeline 只负责数据清洗与入库执行。
 
+Companion local project layout:
+
+```text
+J:\tax
+├── caishui-webapp/        # WebApp engine, Prisma schema, retrieval, Q&A
+└── data-pipeline/         # this repository
+```
+
+The full local system README lives at `J:\tax\README.md` when developing in the combined workspace.
+
 ## Responsibilities
 
 - Load PDF / Markdown / Excel / CSV source files.
@@ -14,6 +24,22 @@
 - Generate production embeddings only for `verified` chunks.
 - Write ingestion progress and chunks to the shared PostgreSQL database.
 - Expose preview, ingest, and task-status APIs.
+
+## Agent and Architecture Rules
+
+Before changing this repository, read the nearest `AGENTS.md`:
+
+- `AGENTS.md` — pipeline-wide rules, commands, contract and DB ownership.
+- `api/AGENTS.md` — FastAPI route adapter rules.
+- `output/AGENTS.md` — output schema, writer, verification, and embedding lifecycle rules.
+
+Key invariants:
+
+- Prisma in `caishui-webapp` is the sole DDL owner.
+- Pipeline must not introduce Alembic or SQLAlchemy `create_all`.
+- `/ingest` starts tasks for existing WebApp-owned SourceDocuments; it does not create the parent source row.
+- `output/schemas.py` must stay structurally mirrored with `caishui-webapp/types/pipeline.ts`.
+- Pipeline wire doc types are lowercase: `regulation`, `announcement`, `notice`, `interpretation`, `case`, `guide`.
 
 ## Non-goals
 
