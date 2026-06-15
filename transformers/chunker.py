@@ -39,18 +39,34 @@ def _split_long(text: str) -> list[str]:
     """超长条款（> MAX）按句号/分号二次切分。"""
     if _approx_tokens(text) <= MAX_CHUNK_TOKENS:
         return [text]
+
+    def flush(value: str, out: list[str]) -> None:
+        value = value.strip()
+        while _approx_tokens(value) > MAX_CHUNK_TOKENS:
+            out.append(value[:MAX_CHUNK_TOKENS])
+            value = value[MAX_CHUNK_TOKENS:].strip()
+        if value:
+            out.append(value)
+
     parts = re.split(r"(?<=[。；;])", text)
     out: list[str] = []
     buf = ""
     for p in parts:
         if _approx_tokens(buf + p) > TARGET_CHUNK_TOKENS and buf:
-            out.append(buf)
+            flush(buf, out)
             buf = p
         else:
             buf += p
     if buf:
-        out.append(buf)
+        flush(buf, out)
     return out
+
+
+def _append_safe_text_chunks(text: str, chunks: list[Chunk], index: int) -> int:
+    for piece in _split_long(text):
+        chunks.append(Chunk(piece, index))
+        index += 1
+    return index
 
 
 def chunk_markdown(markdown: str) -> list[Chunk]:
@@ -75,14 +91,21 @@ def chunk_markdown(markdown: str) -> list[Chunk]:
         for piece in _split_long(seg):
             if _approx_tokens(piece) < MIN_CHUNK_TOKENS:
                 pending = (pending + "\n" + piece).strip()
+                if _approx_tokens(pending) >= TARGET_CHUNK_TOKENS:
+                    index = _append_safe_text_chunks(pending, chunks, index)
+                    pending = ""
                 continue
             if pending:
-                piece = (pending + "\n" + piece).strip()
+                combined = (pending + "\n" + piece).strip()
+                if _approx_tokens(combined) <= MAX_CHUNK_TOKENS:
+                    piece = combined
+                else:
+                    index = _append_safe_text_chunks(pending, chunks, index)
                 pending = ""
             chunks.append(Chunk(piece, index)); index += 1
 
     if pending:
-        chunks.append(Chunk(pending, index))
+        index = _append_safe_text_chunks(pending, chunks, index)
 
     return chunks
 

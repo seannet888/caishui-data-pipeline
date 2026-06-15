@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from transformers.chunker import chunk_markdown
+from transformers.chunker import MAX_CHUNK_TOKENS, chunk_markdown
 
 
 def test_splits_on_clause_boundaries():
@@ -34,3 +34,24 @@ def test_degrades_to_paragraphs_without_clause_numbers():
     md = "这是第一段，没有条款编号但内容足够长可以独立成块用于测试降级分段逻辑是否生效。\n\n这是第二段，同样足够长以形成另一个独立的段落分块结果。"
     chunks = chunk_markdown(md)
     assert len(chunks) >= 1
+
+
+def test_long_plain_text_chunks_are_capped_for_embedding_provider():
+    md = "# 长文本测试\n\n" + "增值税实施条例测试内容" * 400
+
+    chunks = chunk_markdown(md)
+
+    assert len(chunks) > 1
+    assert all(len(chunk.content) <= MAX_CHUNK_TOKENS for chunk in chunks)
+
+
+def test_many_short_clause_segments_do_not_accumulate_into_oversized_pending_chunk():
+    md = "# 短条款测试\n\n" + "\n".join(
+        f"第{i}条 本条用于测试短条款累计后仍需安全分块。"
+        for i in range(1, 120)
+    )
+
+    chunks = chunk_markdown(md)
+
+    assert len(chunks) > 1
+    assert all(len(chunk.content) <= MAX_CHUNK_TOKENS for chunk in chunks)

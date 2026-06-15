@@ -29,10 +29,25 @@ If startup logs are redirected for diagnosis, keep them outside the repository, 
 ## Owning Modules
 
 - `ingestion.py` owns Source Document ingestion orchestration: load -> chunk -> enrich metadata -> reconcile lifecycle -> verify -> persist.
+- `transformers/chunker.py` owns semantic chunk boundaries and provider-safe maximum chunk length.
 - `chunk_lifecycle.py` owns preserving/replacing chunk row state across reprocessing.
 - `acceptance_runbook.py` owns pipeline final local acceptance order and environment anti-misuse guidance.
 - `output/schemas.py` is the Pydantic half of the cross-engine JSON contract.
 - `db/models.py` mirrors Prisma-owned tables for reads/writes only.
+
+## Chunking and Embedding Safety
+
+- Text chunks must be capped before embedding. Do not allow a normal text chunk to exceed `MAX_CHUNK_TOKENS`, even when source text has no punctuation, clause boundaries are missing, many short clauses/paragraphs accumulate in `pending`, or a short heading is merged into a pending chunk.
+- Provider `400 invalid parameter` errors caused by oversized chunk input are pipeline bugs, not acceptable runtime filtering.
+- Table chunks may preserve table integrity, but any future table-size exception must be explicit, tested, and reflected in retrieval-readiness behavior.
+
+## Seed Verification Path
+
+- `verification_method="seed"` is the trusted official-source auto-verification path used by WebApp admin uploads.
+- Seed verification is chunk-level: each generated chunk must still pass structural preparation and then be marked `verified` with `verification_method="seed"` and audit-relevant seed metadata.
+- Missing `doc_number` and provider-safe sentence-boundary cuts are not seed blockers. Some authoritative regulations have no document number, and chunking may end near punctuation to satisfy model input limits.
+- Seed blockers should be core quality failures such as too-short content, missing source location, missing issuing body, or missing effective date.
+- Human review remains available for exceptions, rejected/failed chunks, and spot checks; it is not the normal path for every trusted official import.
 
 ## Database Ownership
 
