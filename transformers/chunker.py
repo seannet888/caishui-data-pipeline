@@ -3,7 +3,7 @@
 核心原则：保留财税法规结构完整性，避免切断条款、表格和列表项，
 控制 chunk 大小适配 embedding 模型。
 
-参数（tokens，近似按字符估算）：目标 512 / 最大 1024 / 最小 50 / 重叠 50。
+参数（tokens，近似按字符估算）：目标 360 / 最大 500 / 最小 50 / 重叠 50。
 降级：无明确条款编号时退化为按段落（\\n\\n）切分。
 """
 
@@ -12,8 +12,8 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-TARGET_CHUNK_TOKENS = 512
-MAX_CHUNK_TOKENS = 1024
+TARGET_CHUNK_TOKENS = 360
+MAX_CHUNK_TOKENS = 500
 MIN_CHUNK_TOKENS = 50
 OVERLAP_TOKENS = 50
 

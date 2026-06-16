@@ -371,9 +371,11 @@ class PostgresIngestionAdapter:
 
     async def completed(self, result: PipelineOutput) -> None:
         error_message = "; ".join(result.errors) or None
+        task_status = "SUCCESS" if result.status == "success" else "FAILED"
+        document_status = "COMPLETED" if result.status == "success" else "FAILED"
         await self._update_task_and_document(
-            task_status="SUCCESS",
-            document_status="COMPLETED",
+            task_status=task_status,
+            document_status=document_status,
             completed=True,
             error_message=error_message,
         )

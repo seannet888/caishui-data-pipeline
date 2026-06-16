@@ -45,6 +45,21 @@ def test_long_plain_text_chunks_are_capped_for_embedding_provider():
     assert all(len(chunk.content) <= MAX_CHUNK_TOKENS for chunk in chunks)
 
 
+def test_provider_safe_cap_keeps_chinese_chunks_below_siliconflow_limit():
+    md = (
+        "# 高新技术问答\n\n"
+        + "**专家解答**：\n您好，"
+        + "根据企业所得税、增值税和研发费用加计扣除政策，需要结合业务实质、合同、发票、会计核算和留存备查资料综合判断。"
+        * 40
+    )
+
+    chunks = chunk_markdown(md)
+
+    assert len(chunks) > 1
+    assert MAX_CHUNK_TOKENS <= 500
+    assert all(len(chunk.content) <= 500 for chunk in chunks)
+
+
 def test_many_short_clause_segments_do_not_accumulate_into_oversized_pending_chunk():
     md = "# 短条款测试\n\n" + "\n".join(
         f"第{i}条 本条用于测试短条款累计后仍需安全分块。"

@@ -38,3 +38,24 @@ def test_seed_chunk_still_rejects_missing_core_source_metadata():
         "missing_issuing_body",
         "missing_effective_date",
     ]
+
+
+def test_seed_chunk_rejects_cross_domain_labor_law_content_under_tax_metadata():
+    chunk = SimpleNamespace(
+        content=(
+            "第三十九条 劳动者有下列情形之一的，用人单位可以解除劳动合同：\n"
+            "（一）在试用期间被证明不符合录用条件的；\n"
+            "《中华人民共和国个人所得税法实施条例》（国令第707号）"
+        ),
+        metadata={
+            "source_section": "正文",
+            "doc_number": "国家税务总局公告2016年第16号",
+            "issuing_body": "国家税务总局",
+            "effective_date": "2016-01-01",
+        },
+    )
+
+    ok, issues = validate_seed_chunk(chunk)
+
+    assert ok is False
+    assert issues == ["cross_domain_labor_law_content"]

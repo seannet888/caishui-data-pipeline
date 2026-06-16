@@ -26,5 +26,24 @@ def validate_seed_chunk(chunk) -> tuple[bool, list[str]]:
         issues.append("missing_issuing_body")
     if not chunk.metadata.get("effective_date"):
         issues.append("missing_effective_date")
+    if _looks_like_labor_law_content_under_tax_metadata(chunk):
+        issues.append("cross_domain_labor_law_content")
 
     return len(issues) == 0, issues
+
+
+def _looks_like_labor_law_content_under_tax_metadata(chunk) -> bool:
+    content = chunk.content
+    metadata_text = " ".join(
+        str(chunk.metadata.get(key) or "")
+        for key in ("doc_number", "issuing_body", "source_channel", "doc_type")
+    )
+    tax_metadata = any(
+        marker in metadata_text
+        for marker in ("税", "财政", "国家税务总局", "财税")
+    )
+    labor_contract_rule = (
+        "劳动者有下列情形之一" in content
+        and "用人单位可以解除劳动合同" in content
+    )
+    return tax_metadata and labor_contract_rule

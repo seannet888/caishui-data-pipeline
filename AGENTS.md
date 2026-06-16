@@ -38,14 +38,17 @@ If startup logs are redirected for diagnosis, keep them outside the repository, 
 ## Chunking and Embedding Safety
 
 - Text chunks must be capped before embedding. Do not allow a normal text chunk to exceed `MAX_CHUNK_TOKENS`, even when source text has no punctuation, clause boundaries are missing, many short clauses/paragraphs accumulate in `pending`, or a short heading is merged into a pending chunk.
+- Follow the SiliconFlow provider-safe cap for Chinese text: `MAX_CHUNK_TOKENS` must stay at or below 500 characters unless a live provider regression test proves a higher limit. The old 1024-character estimate caused provider `400 code=20015` failures on 500+ Chinese-character chunks.
 - Provider `400 invalid parameter` errors caused by oversized chunk input are pipeline bugs, not acceptable runtime filtering.
 - Table chunks may preserve table integrity, but any future table-size exception must be explicit, tested, and reflected in retrieval-readiness behavior.
+- Do not mark an ingest task `SUCCESS` when embedding returns partial failures. `PipelineOutput.status="partial_failure"` must persist as task/document `FAILED` with diagnostic `error_message`; otherwise UI and audit logs falsely imply retrieval readiness.
 
 ## Seed Verification Path
 
 - `verification_method="seed"` is the trusted official-source auto-verification path used by WebApp admin uploads.
 - Seed verification is chunk-level: each generated chunk must still pass structural preparation and then be marked `verified` with `verification_method="seed"` and audit-relevant seed metadata.
 - Missing `doc_number` and provider-safe sentence-boundary cuts are not seed blockers. Some authoritative regulations have no document number, and chunking may end near punctuation to satisfy model input limits.
+- Cross-domain contamination is a seed blocker. If tax metadata (for example State Taxation Administration or fiscal/tax document numbers) is attached to unmistakable non-tax labor-law content such as Labor Contract Law termination conditions, the chunk must remain unverified/rejected for human review instead of entering default retrieval.
 - Seed blockers should be core quality failures such as too-short content, missing source location, missing issuing body, or missing effective date.
 - Human review remains available for exceptions, rejected/failed chunks, and spot checks; it is not the normal path for every trusted official import.
 
