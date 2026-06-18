@@ -5,9 +5,17 @@
 
 from __future__ import annotations
 
-from openai import AsyncOpenAI
+import asyncio
+import logging
+
+from openai import AsyncOpenAI, RateLimitError
 
 from config.settings import get_settings
+
+logger = logging.getLogger(__name__)
+
+_MAX_RETRIES = 5
+_BASE_DELAY = 2.0
 
 
 class Embedder:
@@ -21,10 +29,23 @@ class Embedder:
         )
 
     async def embed(self, text: str) -> list[float]:
-        resp = await self._client.embeddings.create(model=self.model, input=text)
-        vector = resp.data[0].embedding
-        if len(vector) != self.dimension:
-            raise ValueError(
-                f"embedding_dimension_mismatch: got {len(vector)}, expected {self.dimension}"
-            )
-        return vector
+        for attempt in range(_MAX_RETRIES):
+            try:
+                resp = await self._client.embeddings.create(
+                    model=self.model, input=text
+                )
+                vector = resp.data[0].embedding
+                if len(vector) != self.dimension:
+                    raise ValueError(
+                        f"embedding_dimension_mismatch: got {len(vector)}, expected {self.dimension}"
+                    )
+                return vector
+            except RateLimitError:
+                if attempt == _MAX_RETRIES - 1:
+                    raise
+                delay = _BASE_DELAY * (2 ** attempt)
+                logger.warning(
+                    "embedding rate-limited, retrying in %.0fs (attempt %d/%d)",
+                    delay, attempt + 1, _MAX_RETRIES,
+                )
+                await asyncio.sleep(delay)
